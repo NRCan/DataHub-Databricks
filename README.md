@@ -1,7 +1,7 @@
 # DataHub-Databricks
 DataBricks scripts for data ingestion, wrangling, processing, and basic visualizations. 
 
-Elsevier 
+CITSM/Elsevier 
 - Data pipeline code for ingesting data from Elsevier API of publications related to NRCAN and related citation data
 
 Demo
