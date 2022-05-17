@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from unittest import main, TestCase
-from ac_processor_utils import ACRow, get_letter_index, get_column_index
+from datetime import date
+from ac_processor_utils import ACRow, get_letter_index, get_column_index, update_splits
 
 @dataclass
 class MockRow:
@@ -21,6 +22,13 @@ class TestACProcessorUtilsModule(TestCase):
         self.assertEqual(carow["A"], 100)
         self.assertEqual(carow["D"], "error")
 
+    def test_group_transations(self):
+        cardholders = {}
+
+        update_splits(cardholders, ACRow(row=[MockRow(value="CH1"), MockRow(value="MCH1"), MockRow(value="Desc1"), MockRow(value=date(2022, 3, 24)), MockRow(value=100.01)]))
+        update_splits(cardholders, ACRow(row=[MockRow(value="CH1"), MockRow(value="MCH1"), MockRow(value="Desc1"), MockRow(value=date(2022, 3, 24)), MockRow(value=200.01)]))
+        update_splits(cardholders, ACRow(row=[MockRow(value="CH1"), MockRow(value="MCH 12345"), MockRow(value="Desc 1"), MockRow(value=date(2022, 3, 24)), MockRow(value=200.01)]))
+        update_splits(cardholders, ACRow(row=[MockRow(value="CH1"), MockRow(value="MCH 12346"), MockRow(value="Desc 2"), MockRow(value=date(2022, 3, 24)), MockRow(value=200.01)]))
 
 if __name__ == '__main__':
     main()

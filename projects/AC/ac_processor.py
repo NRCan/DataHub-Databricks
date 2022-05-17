@@ -2,10 +2,11 @@
 
 import sys
 import os
+from typing import Callable
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
 from ac_processor_rules import apply_criterias
-from ac_processor_utils import ACRow, ACContext
+from ac_processor_utils import ACRow, ACContext, get_valid_splits, update_splits, get_valid_splits, get_selected_rows
 
 def _get_output_name(file_name: str):
     split = os.path.splitext(file_name)
@@ -54,23 +55,55 @@ def _run_processor(argvs):
     colors = _load_filter_colors(workbook["Filters"])
 
     master_sheet = workbook.worksheets[0]
+    last_column = master_sheet.max_column + 1
 
-    mod_rows = 0
-    for excel_row in master_sheet.iter_rows(min_row = 2, max_col = master_sheet.max_column,
-        max_row = master_sheet.max_row):
+    master_sheet.cell(row=1, column=last_column).value = "CRITERIA"
 
-        row = ACRow(row=excel_row)
-        if row["A"] is not None:
-            criteria = apply_criterias(row, context) #result = apply_rules(row, context)
+    cardholders = {}
+
+    def _iterate_main_sheet(action: Callable):
+        """ iterates the valid part of the main sheet """
+        
+        row_index = 2
+        for excel_row in master_sheet.iter_rows(min_row = row_index, max_col = last_column, max_row = master_sheet.max_row):
+            action(excel_row, row_index)
+            row_index += 1
+
+    def _process_row(excel_row, index):
+        """ highlights a row acording to the given criterias """
+
+        row = ACRow(row=excel_row, index=index)
+        cardholder = row["A"]
+        if cardholder is not None:
+            criteria = apply_criterias(row, context)
             if criteria is not None:
-                pattern = colors[criteria.name]
-                _highlight_row(excel_row, pattern)
-                mod_rows += 1
+                _highlight_row(excel_row, colors[criteria.name])
+                excel_row[last_column - 1].value = criteria.name
 
+            # update splits
+            if cardholder not in fps_chs:
+                update_splits(cardholders, row)
+
+    # process all rows and potential calculate splits
+    _iterate_main_sheet(_process_row)
+
+    splits = get_valid_splits(cardholders, 5000.0)
+    split_rows = get_selected_rows(splits)
+    potential_splits = "Potential Splits"
+    split_pattern = colors[potential_splits]
+
+    def _highlight_splits(excel_row, index):
+        if index in split_rows:
+            _highlight_row(excel_row, split_pattern)
+            excel_row[last_column - 1].value = potential_splits
+
+    # highlight splits
+    _iterate_main_sheet(_highlight_splits)
+    
     output_file = _get_output_name(input_file)
     workbook.save(output_file)
 
-    print(f"Output file: {output_file}\nModified rows: {mod_rows}")
+    print(f"Output file: {output_file}\n")
 
     return 0
 
