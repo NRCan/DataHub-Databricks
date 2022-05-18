@@ -44,7 +44,9 @@ def levenshtein_distance(a, b):
 
     return min_dist(0, 0)
 
-def levenshtein_distance_percent(a, b):
+def get_text_similarity(a: str, b: str) -> float:
+    """ Calculates the similarity in percentage of two strings """
+
     a1 = a if a else ""
     b1 = b if b else ""
     max_len = max(1, len(a1), len(b1))
@@ -53,7 +55,7 @@ def levenshtein_distance_percent(a, b):
 
 @dataclass()
 class ACRow:
-    """ Wrapper class for Excel rows """
+    """ Wrapper class for an Excel rows """
 
     row: Any
     index: int = 0
@@ -62,19 +64,47 @@ class ACRow:
         index = get_column_index(column)
         return self.row[index - 1].value
 
+    def cell(self, column):
+        index = get_column_index(column)
+        return self.row[index - 1]
+
+    def highlight(self, color, column, criteria):
+
+        for cell in self.row:
+            cell.fill = color
+
+        current_criteria = self[column]
+        self.cell(column).value = f"{current_criteria} AND {criteria}" if current_criteria else criteria
+
 @dataclass()
 class ACContext:
     fps_cardholders: set[str]
     rcm_cardholders: set[str]
+    dsc_list: set[str]
+    highlight_colors: dict
+    result_column: str
+
+    def in_dsc_list(self, merchant) -> bool:
+        return (merchant if merchant else "").upper() in self.dsc_list
 
 
-@dataclass()
+@dataclass
 class Transaction:
-    date: date 
-    merchant: str
-    desc: str = ''
-    total: float = 0.0
-    index: int = 0
+    
+    row: ACRow
+
+    @property
+    def index(self)-> int: return self.row.index
+    @property
+    def cardholder(self) -> str: return self.row["A"]
+    @property
+    def merchant(self) -> str: return self.row["B"]
+    @property
+    def desc(self) -> str: return self.row["C"]
+    @property
+    def date(self) -> date: return self.row["D"]
+    @property
+    def total(self) -> float: return self.row["E"]
 
 class Split:
     transactions: list[Transaction]
@@ -94,11 +124,11 @@ class Split:
             return False
 
         # compare merchants
-        if levenshtein_distance_percent(master.merchant, trans.merchant) < similarity:
+        if get_text_similarity(master.merchant, trans.merchant) < similarity:
             return False
 
         # compare descriptions
-        if levenshtein_distance_percent(master.desc, trans.desc) < similarity:
+        if get_text_similarity(master.desc, trans.desc) < similarity:
             return False
 
         self.transactions.append(trans)
@@ -106,10 +136,7 @@ class Split:
         return True
 
     def more_than(self, value: float):
-        s = 0
-        for t in self.transactions:
-            s += t.total
-        return s > value #return value < sum(map(lambda t: Transaction -> t.total, self.transactions), 0)
+        return sum(map(lambda t: t.total, self.transactions)) > value
 
     def is_multiple(self) -> bool:
         return len(self.transactions) > 1
@@ -135,20 +162,13 @@ class CardHolder:
         return True
 
     def get_valid_splits(self, min_value: float) -> list[Split]:
+        return list(filter(lambda s: s.is_multiple() and s.more_than(min_value), self.splits))
         
-        filtered = []
 
-        for s in self.splits:
-            if s.is_multiple() and s.more_than(min_value):
-                filtered.append(s)
-
-        return filtered
-
-
-def update_splits(cardholders: dict[CardHolder], row: ACRow):
+def update_splits(cardholders: dict, row: ACRow):
 
     ch_name = row["A"]
-    transaction = Transaction(index=row.index, merchant=row["B"], desc=row["C"], date=row["D"], total=row["E"])
+    transaction = Transaction(row=row)
 
     if ch_name not in cardholders:
         cardholder = CardHolder(ch_name)
@@ -158,16 +178,17 @@ def update_splits(cardholders: dict[CardHolder], row: ACRow):
 
     cardholder.add(transaction)
     
-def get_valid_splits(cardholders: dict[CardHolder], min_value: float) -> list[Split]:
+def get_valid_splits(cardholders: dict, min_value: float) -> list[Split]:
     
-    result = []
+    result = list()
     for key in cardholders:
         result.extend(cardholders[key].get_valid_splits(min_value))
 
     return sorted(result, key=lambda s: s.index)
 
-def get_selected_rows(splits: list[Split]) -> set[int]:
-    result = set()
+def get_selected_transactions(splits: list[Split]) -> list[Transaction]:
+    result = list()
     for s in splits:
-        result.update(map(lambda t: t.index, s.transactions))
+        result.extend(s.transactions)
     return result
+
