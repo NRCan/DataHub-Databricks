@@ -1,17 +1,20 @@
 """ CA Processor Rules """
 
 from dataclasses import dataclass
+from turtle import color
 from typing import Callable
 from ac_analysis_utils import ACRow, ACContext, get_selected_transactions, get_valid_splits, update_splits
 
 class Filter:
     name: str
     rule: Callable
+    color: str
     rows: list
 
-    def __init__(self, name: str, rule: Callable) -> None:
+    def __init__(self, name: str, rule: Callable, color: str) -> None:
         self.name = name
         self.rule = rule
+        self.color = color
         self.rows = list()
 
 ###### filter rules - start ######
@@ -67,18 +70,18 @@ def rcm_cardholders_vlookup(row: ACRow, context: ACContext) -> bool:
 
 def get_filters():
     filters = [
-        Filter(name="Restricted IS/OGD transactions", rule=mcc_9399), 
-        Filter(name="Restricted Travel Status Related Expenses", rule=restricted_travel_expense),
-        Filter(name="Event/Hospitality", rule=mcc_7932),
-        Filter(name="TA Limit exceeded", rule=ta_limit_exceeded),
-        Filter(name="Monitoring of Convenience Cheques", rule=empty_cheques),
-        Filter(name="Financial Coding Error - Designated Science Conferences", rule=gl_financial_coding_error),
-        Filter(name="Conference fees", rule=gl_conference_fees),
-        Filter(name="Hospitality", rule=gl_hospitality),
-        Filter(name="Restricted Memberships", rule=gl_restricted_memberships),
-        Filter(name="Restricted Home Equipment Purchases", rule=gl_restricted_home_equipment_purchases),
-        Filter(name="Restricted Motor Vehicles Expenses", rule=gl_restricted_motor_vehicles),
-        Filter(name="SoD - TA and s.34", rule=rcm_cardholders_vlookup)
+        Filter(name="Restricted IS/OGD transactions", rule=mcc_9399, color="Cornsilk"), 
+        Filter(name="Restricted Travel Status Related Expenses", rule=restricted_travel_expense, color="NavajoWhite"),
+        Filter(name="Event/Hospitality", rule=mcc_7932, color="Salmon"),
+        Filter(name="TA Limit exceeded", rule=ta_limit_exceeded, color="DarkSalmon"),
+        Filter(name="Monitoring of Convenience Cheques", rule=empty_cheques, color="RosyBrown"),
+        Filter(name="Financial Coding Error - Designated Science Conferences", rule=gl_financial_coding_error, color="Pink"),
+        Filter(name="Conference fees", rule=gl_conference_fees, color="HotPink"),
+        Filter(name="Hospitality", rule=gl_hospitality, color="Gold"),
+        Filter(name="Restricted Memberships", rule=gl_restricted_memberships, color="Violet"),
+        Filter(name="Restricted Home Equipment Purchases", rule=gl_restricted_home_equipment_purchases, color="Olive"),
+        Filter(name="Restricted Motor Vehicles Expenses", rule=gl_restricted_motor_vehicles, color="DarkSeaGreen"),
+        Filter(name="SoD - TA and s.34", rule=rcm_cardholders_vlookup, color="Aqua")
     ]
     return filters
 
@@ -114,20 +117,19 @@ class Analizer:
 
     def highlight_filters(self):
         for f in self.filters:
-            color = self.context.highlight_colors[f.name]
+            color = self.context.highlight_colors[f.color]
             for r in f.rows:
                 r.highlight(color, self.context.result_column, f.name)
 
     def highlight_splits(self):
         
-        potential_splits = "Potential Splits"
-        color = self.context.highlight_colors[potential_splits]
+        color = self.context.highlight_colors["OrangeRed"]
 
         splits = get_valid_splits(self.cardholders, 5000.0)
         trans = get_selected_transactions(splits)
 
         for t in trans:
-            t.row.highlight(color, self.context.result_column, potential_splits)
+            t.row.highlight(color, self.context.result_column, "Potential Splits")
 
     def __str__(self) -> str:
         return "\n".join(map(lambda f: f"{f.name}: {len(f.rows)}", self.filters))
