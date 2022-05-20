@@ -54,12 +54,15 @@ def _load_dsc_list(sheet) -> set[str]:
 def _get_context(workbook) -> ACContext:
 
     fps_chs = _load_fps_chs(workbook["FPS CHs"])
-    rcm_chs = _load_rcm_chs(workbook["RCM - CH Listing "]) #notice there is a space at the end in the sheet name
+    rcm_chs = _load_rcm_chs(workbook["RCM CHs"]) #notice there is a space at the end in the sheet name
     dsc_list = _load_dsc_list(workbook["DSC"])
     colors = _get_highlight_colors()
 
     return ACContext(fps_cardholders=fps_chs, rcm_cardholders=rcm_chs, dsc_list=dsc_list, 
         highlight_colors=colors, result_column="AI")
+
+def _validate_sheets(names: list[str]) -> bool:
+    return "Master" in names and "FPS CHs" in names and "RCM CHs" in names and "DSC" in names
 
 def run_analysis(argvs):
 
@@ -70,9 +73,20 @@ def run_analysis(argvs):
 
     input_file = argvs[1]
 
+    print(f"Loading file...")
+
     workbook = load_workbook(input_file, read_only=False, data_only=True)
-    master_sheet = workbook.worksheets[0]
+
+    print(f"Validating sheets...")
+
+    if not _validate_sheets(workbook.sheetnames):
+        print("One of these sheets was not found: 'Master', 'FPS CHs', 'RCM CHs', 'DSC'.\nPlease rename the sheets to be able to run the analysis.")
+        return 0
+
+    master_sheet = workbook["Master"]
     
+    print(f"Analysing...")
+
     context = _get_context(workbook)
     last_column = master_sheet.max_column + 1
 
@@ -91,6 +105,8 @@ def run_analysis(argvs):
 
         row_index += 1
 
+    print(f"Highlighting rows...")
+
     # highlight the rows
     analyzer.highlight_rows()
 
@@ -100,7 +116,7 @@ def run_analysis(argvs):
     output_file = _get_output_name(input_file)
     workbook.save(output_file)
 
-    print(f"Output file: {output_file}\n")
+    print(f"Process completed...\nOutput file: {output_file}\n")
 
     return 0
 

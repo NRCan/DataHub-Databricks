@@ -118,8 +118,8 @@ class Split:
         # compare with the first transaction
         master = self.transactions[0]
 
-        # compare dates
-        delta_day = (trans.date - master.date).days
+        # compare dates (ignore blanks)
+        delta_day = (trans.date - master.date).days if trans.date and master.date else 0
         if delta_day > max_days:
             return False
 
