@@ -1,4 +1,4 @@
-""" AC processor utility function and classes """
+""" AC utility functions and classes """
 
 from dataclasses import dataclass
 from typing import Any
@@ -83,6 +83,7 @@ class ACContext:
     dsc_list: set[str]
     highlight_colors: dict
     spend_max: float
+    gl_codes: list[str]
     result_column: str
 
     def in_dsc_list(self, merchant) -> bool:

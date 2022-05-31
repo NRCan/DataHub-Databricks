@@ -1,4 +1,4 @@
-""" CA Processor Rules """
+""" CA Analysis Engine """
 
 from dataclasses import dataclass
 from turtle import color
@@ -104,7 +104,7 @@ class Analizer:
                 f.rows.append(row)    
 
         # update splits
-        if row["A"] not in self.context.fps_cardholders and row["AE"] not in ['52008']:
+        if row["A"] not in self.context.fps_cardholders and row["AE"] not in self.context.gl_codes:
             update_splits(self.cardholders, row)
 
     def highlight_rows(self):

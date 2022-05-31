@@ -57,9 +57,10 @@ def _get_context(workbook) -> ACContext:
     rcm_chs = _load_rcm_chs(workbook["RCM CHs"])
     dsc_list = _load_dsc_list(workbook["DSC"])
     colors = _get_highlight_colors()
+    gl_codes = ['52017', '52008', '52148', '54374', '52136', '52334']
 
     return ACContext(fps_cardholders=fps_chs, rcm_cardholders=rcm_chs, dsc_list=dsc_list, 
-        highlight_colors=colors, result_column="AI", spend_max=10000.0)
+        highlight_colors=colors, result_column="AI", spend_max=10000.0, gl_codes=gl_codes)
 
 def _validate_sheets(names: list[str]) -> bool:
     return "Master" in names and "FPS CHs" in names and "RCM CHs" in names and "DSC" in names
