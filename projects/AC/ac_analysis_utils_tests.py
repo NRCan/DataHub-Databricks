@@ -41,7 +41,7 @@ class TestACProcessorUtilsModule(TestCase):
         split = Split(Transaction(row=row1))
         split.try_add(Transaction(row=row2), 2, 90)
 
-        self.assertTrue(split.more_than(200))
+        self.assertTrue(split.equal_or_more(200))
 
 if __name__ == '__main__':
     main()

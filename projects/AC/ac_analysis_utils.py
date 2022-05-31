@@ -82,6 +82,7 @@ class ACContext:
     rcm_cardholders: set[str]
     dsc_list: set[str]
     highlight_colors: dict
+    spend_max: float
     result_column: str
 
     def in_dsc_list(self, merchant) -> bool:
@@ -127,16 +128,16 @@ class Split:
         if get_text_similarity(master.merchant, trans.merchant) < similarity:
             return False
 
-        # compare descriptions
-        if get_text_similarity(master.desc, trans.desc) < similarity:
-            return False
+        # compare descriptions (to avoid missing splits, commented)
+        # if get_text_similarity(master.desc, trans.desc) < similarity:
+        #     return False
 
         self.transactions.append(trans)
         
         return True
 
-    def more_than(self, value: float):
-        return sum(map(lambda t: t.total, self.transactions)) > value
+    def equal_or_more(self, limit: float):
+        return sum(map(lambda t: t.total, self.transactions)) >= limit
 
     def is_multiple(self) -> bool:
         return len(self.transactions) > 1
@@ -154,15 +155,16 @@ class CardHolder:
     def add(self, trans: Transaction) -> bool:
         
         for split in self.splits:
-            if split.try_add(trans, 2, 60.0):
+            # try to add split with 4 days gap and 60% similarity on merchant name
+            if split.try_add(trans, 4, 60.0):
                 return False
         
         self.splits.append(Split(trans))
 
         return True
 
-    def get_valid_splits(self, min_value: float) -> list[Split]:
-        return list(filter(lambda s: s.is_multiple() and s.more_than(min_value), self.splits))
+    def get_valid_splits(self, limit: float) -> list[Split]:
+        return list(filter(lambda s: s.is_multiple() and s.equal_or_more(limit), self.splits))
         
 
 def update_splits(cardholders: dict, row: ACRow):

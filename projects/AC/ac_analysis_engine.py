@@ -31,8 +31,8 @@ def mcc_7932(row: ACRow, context: ACContext) -> bool:
     return row["N"] == '7932'
 
 def ta_limit_exceeded(row: ACRow, context: ACContext) -> bool:
-    """ TA Limit exceeded => column E > 5000 """
-    return row["E"] > 5000.00
+    """ TA Limit exceeded => column E > MAX """
+    return row["E"] >= context.spend_max
 
 def empty_cheques(row: ACRow, context: ACContext) -> bool:
     """ Monitoring of Convenience Cheques => column B = CHEQUE and E is empty """
@@ -104,7 +104,7 @@ class Analizer:
                 f.rows.append(row)    
 
         # update splits
-        if row["A"] not in self.context.fps_cardholders:
+        if row["A"] not in self.context.fps_cardholders and row["AE"] not in ['52008']:
             update_splits(self.cardholders, row)
 
     def highlight_rows(self):
@@ -125,7 +125,7 @@ class Analizer:
         
         color = self.context.highlight_colors["OrangeRed"]
 
-        splits = get_valid_splits(self.cardholders, 5000.0)
+        splits = get_valid_splits(self.cardholders, self.context.spend_max)
         trans = get_selected_transactions(splits)
 
         for t in trans:
