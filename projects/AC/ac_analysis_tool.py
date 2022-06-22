@@ -1,11 +1,6 @@
 """ CA Analysis Main """
 
-# Update Notes:
-# 1. To add a new Rule:
-# 1.1- Find (Ctrl + F) "filter rules - start" (line# 245 )
-# 1.2- Create a new rule function
-# 1.3- Add it to the list in the function (Ctrl + F) "get_filters" (line# 311)
-# 2. Check the Columns match the names (line# 24-31). 
+#Note: to add new filter rules see readme.md file.
 
 import sys
 import os
