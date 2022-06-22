@@ -1,10 +1,9 @@
-# Adquisition Card processing tool
+# Acquisition Card Processing Tool
 
-## Usage
-> ac_analysis <file_path>
+## Requirements
+- The tool will only works with .xlsx files. Before using the tool, the original file must be saved as a .xlsx file type.
+- The Excel workbook must have the following sheets with the exact names or the tool will not generate the Results file: Master, FPS CHs, RCM CHs, DSC. 
 
-### <file_path> 
-- If the file path contains space then it must be surrounded by quotes, e.g.: "file with spaces.xlsx"
-- The tool only works with XLSX files, please save the original file as a XLSX before trying.
-- The tool expects to find these sheets in the Excel Book: Master, FPS CHs, RCM CHs, DSC. With the exact name.
-
+## Usage - Drag and drop file
+- Just drag and drop the Excel file on top of the ac_analysis.exe and the app will process the file.
+- A new file, appended with "_results", will be generated in the same folder as the original Excel file.
