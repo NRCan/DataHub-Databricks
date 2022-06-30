@@ -1,6 +1,6 @@
 import sys
 from unittest import main, TestCase
-from ac_analysis_tool import run_analysis
+from ac_analysis import run_analysis
 
 class TestACAnalysis(TestCase):
     
