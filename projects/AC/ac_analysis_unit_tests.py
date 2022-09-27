@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from unittest import main, TestCase
 from datetime import date
-from ac_analysis_utils import ACRow, Split, Transaction, get_letter_index, get_column_index, get_valid_splits, update_splits
+from ac_analysis import ACRow, Split, Transaction, get_letter_from_index, get_letter_index, get_column_index, get_valid_splits, update_splits
 
 @dataclass
 class MockRow:
     value: object
 
-class TestACProcessorUtilsModule(TestCase):
+class TestACAnalysisModule(TestCase):
     
     def test_get_letter_index_returns_expected(self):
         self.assertEqual(get_letter_index('A'), 1)
@@ -42,6 +42,25 @@ class TestACProcessorUtilsModule(TestCase):
         split.try_add(Transaction(row=row2), 2, 90)
 
         self.assertTrue(split.equal_or_more(200))
+
+    def test_letters_from_index(self):
+        actual = get_letter_from_index(1)
+        expected = "A"
+        self.assertEqual(actual, expected)
+
+        actual = get_letter_from_index(26)
+        expected = "Z"
+        self.assertEqual(actual, expected)
+
+        index = get_column_index('AA')
+        actual = get_letter_from_index(index)
+        expected = "AA"
+        self.assertEqual(actual, expected)
+
+        index = get_column_index('ZZZ')
+        actual = get_letter_from_index(index)
+        expected = "ZZZ"
+        self.assertEqual(actual, expected)
 
 if __name__ == '__main__':
     main()

@@ -2,6 +2,8 @@
 
 #Note: to add new filter rules see readme.md file.
 
+from audioop import reverse
+from math import remainder
 import sys
 import os
 
@@ -13,17 +15,35 @@ from typing import Callable, Any
 from datetime import date
 from functools import lru_cache
 
+""" Set the maximum expend value here """
+SPEND_MAX = 10000.00
+
 
 """ Columns (validate they match the Excel Sheet) """
+# CARDHOLDER
+# MERCHANT_NAME (review)
+# DOC_DESC
+# TRANS_DATE
+# AMOUNT (review)
+# BT_MCC_CODE
+# SAKNR_GL_ACCT
 
-CARDHOLDER    = "B"
-MERCHANT_NAME = "C"
-DOC_DESC      = "D"
-TRANS_DATE    = "E"
-AMMOUNT       = "F"
-BT_MCC_CODE   = "O"
-SAKNR_GL_ACCT = "AF"
-CRITERIA_COL  = "AJ"  
+
+class Vars:
+    """ stores the global 'configurable variables' """
+    def __init__(self):
+        self.CARDHOLDER    = "A"
+        self.MERCHANT_NAME = "B"
+        self.DOC_DESC      = "C"
+        self.TRANS_DATE    = "D"
+        self.AMOUNT        = "E"
+        self.BT_MCC_CODE   = "N"
+        self.SAKNR_GL_ACCT = "AC"
+        self.CRITERIA_COL  = "AG"
+
+
+# global setting variables
+vars = Vars()
 
 
 """ AC utility functions and classes """
@@ -44,6 +64,22 @@ def get_column_index(column):
         index += get_letter_index(col) * (base ** exp)
         exp += 1
     return index
+
+
+def enum_letters_from_index(index):
+    base = get_letter_index('Z')
+    more = True
+    while more:
+        r = (index - 1) % base
+        yield chr(ord('A') + r)
+        index = (index - 1) // base
+        more = index > 0
+
+
+def get_letter_from_index(index):
+    letters = list(enum_letters_from_index(index))
+    letters.reverse()
+    return "".join(letters)
 
 
 def levenshtein_distance(a, b):
@@ -124,15 +160,15 @@ class Transaction:
     @property
     def index(self)-> int: return self.row.index
     @property
-    def cardholder(self) -> str: return self.row[CARDHOLDER]
+    def cardholder(self) -> str: return self.row[vars.CARDHOLDER]
     @property
-    def merchant(self) -> str: return self.row[MERCHANT_NAME]
+    def merchant(self) -> str: return self.row[vars.MERCHANT_NAME]
     @property
-    def desc(self) -> str: return self.row[DOC_DESC]
+    def desc(self) -> str: return self.row[vars.DOC_DESC]
     @property
-    def date(self) -> date: return self.row[TRANS_DATE]
+    def date(self) -> date: return self.row[vars.TRANS_DATE]
     @property
-    def total(self) -> float: return self.row[AMMOUNT]
+    def total(self) -> float: return self.row[vars.AMOUNT]
 
 
 class Split:
@@ -192,7 +228,7 @@ class CardHolder:
 
 def update_splits(cardholders: dict, row: ACRow):
 
-    ch_name = row[CARDHOLDER]
+    ch_name = row[vars.CARDHOLDER]
     transaction = Transaction(row=row)
 
     if ch_name not in cardholders:
@@ -240,7 +276,7 @@ class Filter:
 ###### filter rules - start ######
 
 def mcc_9399(row: ACRow, context: ACContext) -> bool:
-    return row[BT_MCC_CODE] == '9399'
+    return row[vars.BT_MCC_CODE] == '9399'
 
 def restricted_travel_expense(row: ACRow, context: ACContext) -> bool:
 
@@ -256,23 +292,23 @@ def restricted_travel_expense(row: ACRow, context: ACContext) -> bool:
            "3740", "3750", "3751", "3778", "4011", "4111", "4121", "4131", "4582", "4722", "4784", 
            "4789", "7011", "7033", "7512", "7513", "7519"]
 
-    return row[SAKNR_GL_ACCT] in gls or row[BT_MCC_CODE] in mcc 
+    return row[vars.SAKNR_GL_ACCT] in gls or row[vars.BT_MCC_CODE] in mcc 
 
 def mcc_7932(row: ACRow, context: ACContext) -> bool:
-    return row[BT_MCC_CODE] == '7932'
+    return row[vars.BT_MCC_CODE] == '7932'
 
 def ta_limit_exceeded(row: ACRow, context: ACContext) -> bool:
-    return row[AMMOUNT] >= context.spend_max
+    return row[vars.AMOUNT] >= context.spend_max
 
 def convenience_cheques(row: ACRow, context: ACContext) -> bool:
-    return (row[MERCHANT_NAME] == "CHEQUE" and row[AMMOUNT] is None) or row[BT_MCC_CODE] == "9991"
+    return (row[vars.MERCHANT_NAME] == "CHEQUE" and row[vars.AMOUNT] is None) or row[vars.BT_MCC_CODE] == "9991"
 
 
 def gl_financial_coding_error(row: ACRow, context: ACContext) -> bool:
-    return row[SAKNR_GL_ACCT] in ['52334', '52136'] and context.in_dsc_list(row[MERCHANT_NAME])
+    return row[vars.SAKNR_GL_ACCT] in ['52334', '52136'] and context.in_dsc_list(row[vars.MERCHANT_NAME])
 
 def gl_conference_fees(row: ACRow, context: ACContext) -> bool:
-    return row[SAKNR_GL_ACCT] in ['52334', '52136'] and not context.in_dsc_list(row[MERCHANT_NAME])
+    return row[vars.SAKNR_GL_ACCT] in ['52334', '52136'] and not context.in_dsc_list(row[vars.MERCHANT_NAME])
 
 def gl_hospitality(row: ACRow, context: ACContext) -> bool:
 
@@ -280,10 +316,10 @@ def gl_hospitality(row: ACRow, context: ACContext) -> bool:
     mcc = ["5411", "5422", "5441", "5462", "5499", "5811", "5812", "5813", "5814", "5921", 
            "5992", "5993", "7922", "7929", "7932", "7941", "7991", "7998", "7999", "8398"]
     
-    return row[SAKNR_GL_ACCT] in gls or row[BT_MCC_CODE] in mcc
+    return row[vars.SAKNR_GL_ACCT] in gls or row[vars.BT_MCC_CODE] in mcc
 
 def gl_restricted_memberships(row: ACRow, context: ACContext) -> bool:
-    return row[SAKNR_GL_ACCT] in ['58208', '52336', '52337'] or row[BT_MCC_CODE] in ["7997", "8641", "8699"]
+    return row[vars.SAKNR_GL_ACCT] in ['58208', '52336', '52337'] or row[vars.BT_MCC_CODE] in ["7997", "8641", "8699"]
 
 def gl_restricted_motor_vehicles(row: ACRow, context: ACContext) -> bool:
 
@@ -291,37 +327,37 @@ def gl_restricted_motor_vehicles(row: ACRow, context: ACContext) -> bool:
     mcc = ["5013", "5172", "5511", "5532", "5533", "5541", "5542", "5599", "7523", 
            "7531", "7534", "7535", "7538", "7542", "7549", "7692", "7699", "8675"]
 
-    return row[SAKNR_GL_ACCT] in gls or row[BT_MCC_CODE] in mcc
+    return row[vars.SAKNR_GL_ACCT] in gls or row[vars.BT_MCC_CODE] in mcc
 
 def rcm_cardholders_vlookup(row: ACRow, context: ACContext) -> bool:
-    return row[CARDHOLDER] in context.rcm_cardholders
+    return row[vars.CARDHOLDER] in context.rcm_cardholders
 
 def restricted_home_equipment_purchases(row: ACRow, context: ACContext) -> bool:
     
     gls = ["54260", "54206", "54208"]
     mcc = ["5021", "5712", "5719", "7641"]
 
-    return (row[SAKNR_GL_ACCT] in gls or row[BT_MCC_CODE] in mcc) and row[AMMOUNT] >= 800.00 and row[CARDHOLDER] not in context.fps_cardholders
+    return (row[vars.SAKNR_GL_ACCT] in gls or row[vars.BT_MCC_CODE] in mcc) and row[vars.AMOUNT] >= 800.00 and row[vars.CARDHOLDER] not in context.fps_cardholders
 
 def restricted_it_purchases(row: ACRow, context: ACContext) -> bool:    
 
     gls = ["53150", "52385", "52386", "52387", "53140", "53142", "53362", "54312", "54295", "54040", "54042", "54050"]
     mcc = ["4816", "5045", "5732", "5734", "5815", "5816", "5817", "5818", "7379", "7622"]
 
-    return (row[SAKNR_GL_ACCT] in gls or row[BT_MCC_CODE] in mcc) and row[AMMOUNT] >= 800.00 and row[CARDHOLDER] not in context.fps_cardholders
+    return (row[vars.SAKNR_GL_ACCT] in gls or row[vars.BT_MCC_CODE] in mcc) and row[vars.AMOUNT] >= 800.00 and row[vars.CARDHOLDER] not in context.fps_cardholders
 
 def books_papers_subs(row: ACRow, context: ACContext) -> bool: 
-    return row[BT_MCC_CODE] in ["5192", "5942", "5994"]
+    return row[vars.BT_MCC_CODE] in ["5192", "5942", "5994"]
 
 def fines_and_penalties(row: ACRow, context: ACContext) -> bool: 
-    return row[BT_MCC_CODE] in ["9222", "9311"]
+    return row[vars.BT_MCC_CODE] in ["9222", "9311"]
 
 def personal_purchases(row: ACRow, context: ACContext) -> bool: 
     
     mcc = ["5094", "5733", "5932", "5940", "5944", "5945", "5947", "5948", "5950", "5970", 
            "5971", "5972", "5977", "5997", "7230", "7298", "7333", "7841", "7911"]
 
-    return row[BT_MCC_CODE] in mcc
+    return row[vars.BT_MCC_CODE] in mcc
 
 
 ###### filter rules - end ######
@@ -367,7 +403,7 @@ class Analizer:
                 f.rows.append(row)    
 
         # update splits
-        if row[CARDHOLDER] not in self.context.fps_cardholders and row[SAKNR_GL_ACCT] not in self.context.gl_codes:
+        if row[vars.CARDHOLDER] not in self.context.fps_cardholders and row[vars.SAKNR_GL_ACCT] not in self.context.gl_codes:
             update_splits(self.cardholders, row)
 
     def highlight_rows(self):
@@ -408,6 +444,7 @@ def _get_pattern(rgb: str) -> PatternFill:
 
 
 def _get_highlight_colors() -> dict:
+    # duplicate colors
     return {
         "Cornsilk": _get_pattern("FFF8DC"),
         "NavajoWhite": _get_pattern("FFDEAD"), 
@@ -459,12 +496,30 @@ def _get_context(workbook) -> ACContext:
     gl_codes = ['52017', '52008', '52148', '54374', '52136', '52334']
 
     return ACContext(fps_cardholders=fps_chs, rcm_cardholders=rcm_chs, dsc_list=dsc_list, 
-        highlight_colors=colors, result_column=CRITERIA_COL, spend_max=10000.0, gl_codes=gl_codes)
+        highlight_colors=colors, result_column=vars.CRITERIA_COL, spend_max=SPEND_MAX, gl_codes=gl_codes)
 
 
 def _validate_sheets(names: list[str]) -> bool:
     return "Master" in names and "FPS CHs" in names and "RCM CHs" in names and "DSC" in names
 
+
+def _update_column_indexes(row, last_column):
+    for i in range(last_column):
+        value = row[i].value
+        if value == 'CARDHOLDER':
+            vars.CARDHOLDER = get_letter_from_index(i + 1)
+        if value == 'MERCHANT_NAME':
+            vars.MERCHANT_NAME = get_letter_from_index(i + 1)
+        if value == 'DOC_DESC':
+            vars.DOC_DESC = get_letter_from_index(i + 1)
+        if value == 'TRANS_DATE':
+            vars.TRANS_DATE = get_letter_from_index(i + 1)
+        if value == 'AMOUNT':
+            vars.AMOUNT = get_letter_from_index(i + 1)
+        if value == 'BT_MCC_CODE':
+            vars.BT_MCC_CODE = get_letter_from_index(i + 1)
+        if value == 'SAKNR_GL_ACCT':
+            vars.SAKNR_GL_ACCT = get_letter_from_index(i + 1)
 
 def run_analysis(argvs):
 
@@ -489,22 +544,27 @@ def run_analysis(argvs):
     
     print(f"Analysing...")
 
-    context = _get_context(workbook)
     last_column = master_sheet.max_column + 1
-    criteria_column = get_column_index(CRITERIA_COL)
-    
+    criteria_column = last_column
     master_sheet.cell(row=1, column=criteria_column).value = "CRITERIA"
+    vars.CRITERIA_COL = get_letter_from_index(criteria_column)
+
+    context = _get_context(workbook)
+    
 
     analyzer = Analizer(context)
 
     # iterates the master sheet
-    row_index = 2
+    row_index = 1
     for excel_row in master_sheet.iter_rows(min_row=row_index, max_col=last_column, max_row=master_sheet.max_row):
 
-        row = ACRow(row=excel_row, index=row_index)
+        if row_index == 1:
+            _update_column_indexes(excel_row, last_column)
 
-        if row[CARDHOLDER] is not None:
-            analyzer.analize(row)
+        else:
+            row = ACRow(row=excel_row, index=row_index)
+            if row[vars.CARDHOLDER] is not None:
+                analyzer.analize(row)
 
         row_index += 1
 
